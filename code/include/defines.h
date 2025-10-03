@@ -335,4 +335,9 @@
     #define EXAMPLE_MAX_STA_CONN       1
 #endif // ENABLE_SOFTAP
 
+//Telegram Bot
+#ifdef ENABLE_TELEGRAM
+    // Telegram specific definitions can go here if needed
+#endif // ENABLE_TELEGRAM
+
 #endif // ifndef defines_h

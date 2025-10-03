@@ -20,6 +20,9 @@
 #ifdef ENABLE_WEBHOOK
 	#include "ClassFlowWebhook.h"
 #endif //ENABLE_WEBHOOK
+#ifdef ENABLE_TELEGRAM
+	#include "ClassFlowTelegram.h"
+#endif //ENABLE_TELEGRAM
 #include "ClassFlowCNNGeneral.h"
 
 class ClassFlowControll :

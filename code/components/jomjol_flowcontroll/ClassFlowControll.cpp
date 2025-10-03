@@ -77,6 +77,12 @@ std::string ClassFlowControll::doSingleStep(std::string _stepname, std::string _
         }
     #endif //ENABLE_WEBHOOK
 
+    #ifdef ENABLE_TELEGRAM
+        if ((_stepname.compare("[Telegram]") == 0) || (_stepname.compare(";[Telegram]") == 0)) {
+            _classname = "ClassFlowTelegram";
+        }
+    #endif //ENABLE_TELEGRAM
+
     for (int i = 0; i < FlowControll.size(); ++i) {
         if (FlowControll[i]->name().compare(_classname) == 0) {
             if (!(FlowControll[i]->name().compare("ClassFlowTakeImage") == 0)) {
@@ -276,6 +282,12 @@ ClassFlow* ClassFlowControll::CreateClassFlow(std::string _type)
             cfc = new ClassFlowWebhook(&FlowControll);
         }
     #endif //ENABLE_WEBHOOK
+
+    #ifdef ENABLE_TELEGRAM
+        if (toUpper(_type).compare("[TELEGRAM]") == 0) {
+            cfc = new ClassFlowTelegram(&FlowControll);
+        }
+    #endif //ENABLE_TELEGRAM
 
     if (toUpper(_type).compare("[POSTPROCESSING]") == 0) {
         cfc = new ClassFlowPostProcessing(&FlowControll, flowanalog, flowdigit); 

@@ -48,6 +48,10 @@
     #include "softAP.h"
 #endif //ENABLE_SOFTAP
 
+#ifdef ENABLE_TELEGRAM
+    #include "interface_telegram.h"
+#endif //ENABLE_TELEGRAM
+
 #ifdef DISABLE_BROWNOUT_DETECTOR
     #include "soc/soc.h" 
     #include "soc/rtc_cntl_reg.h" 
