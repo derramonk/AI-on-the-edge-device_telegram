@@ -26,7 +26,7 @@ void ClassFlowTelegram::SetInitialParameter(void)
     TelegramEnable = false;
     TelegramUploadImg = 0;
     TelegramOnError = false;
-}       
+}
 
 ClassFlowTelegram::ClassFlowTelegram()
 {
@@ -161,11 +161,29 @@ bool ClassFlowTelegram::doFlow(string zwtime)
         telegramInitialized = true;
     }
 
-    std::string testmsg = "📊 AI-on-the-edge Update\n";
-    TelegramSendMessage(testmsg);
+    // Debug: Check if flowpostprocessing is available
+    if (!flowpostprocessing) {
+        LogFile.WriteToFile(ESP_LOG_INFO, TAG, "flowpostprocessing is NULL - searching in available flows:");
+        if (ListFlowControll) {
+            for (int i = 0; i < ListFlowControll->size(); ++i) {
+                LogFile.WriteToFile(ESP_LOG_DEBUG, TAG, "Available flow " + std::to_string(i) + ": " + ((*ListFlowControll)[i])->name());
+                // Find PostProcessing flow at runtime
+                if (((*ListFlowControll)[i])->name().compare("ClassFlowPostProcessing") == 0)
+                {
+                    flowpostprocessing = (ClassFlowPostProcessing*) (*ListFlowControll)[i];
+                    LogFile.WriteToFile(ESP_LOG_INFO, TAG, "Found and assigned flowpostprocessing at runtime");
+                    break;
+                }
+            }
+        } else {
+            LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "ListFlowControll is NULL");
+        }
+    }
 
     if (flowpostprocessing)
     {
+        LogFile.WriteToFile(ESP_LOG_INFO, TAG, "Sending Telegram message");
+
         std::vector<NumberPost*>* numbers = flowpostprocessing->GetNumbers();
         bool hasError = false;
         
