@@ -1027,6 +1027,81 @@
             <td>$TOOLTIP_PostProcessing_NUMBER.CheckDigitIncreaseConsistency</td>
         </tr>
 
+        <!------------- Telegram ------------------>
+        <tr style="border-bottom: 2px solid lightgray;">
+            <td colspan="3" style="padding-left: 0px; padding-bottom: 3px;">
+                <h4>
+                <input type="checkbox" id="Category_Telegram_enabled" value="1"  onclick = 'UpdateAfterCategoryCheck()' unchecked >
+                <label for=Category_Telegram_enabled>Telegram</label>
+                </h4>		
+            </td>
+        </tr>
+
+        <tr class="TelegramItem">
+            <td class="indent1">
+                <input type="checkbox" id="Telegram_TelegramEnable_enabled" value="1"  onclick = 'InvertEnableItem("Telegram", "TelegramEnable")' unchecked >
+                <label for=Telegram_TelegramEnable_enabled><class id="Telegram_TelegramEnable_text" style="color:black;">Enable Telegram</class></label>
+            </td>
+            <td>
+                <select id="Telegram_TelegramEnable_value1">
+                    <option value="false" selected>false</option>
+                    <option value="true">true</option>
+                </select>
+            </td>
+            <td>Enable or disable Telegram notifications</td>
+        </tr>
+
+        <tr class="TelegramItem">
+            <td class="indent1">
+                <input type="checkbox" id="Telegram_BotToken_enabled" value="1"  onclick = 'InvertEnableItem("Telegram", "BotToken")' unchecked >
+                <label for=Telegram_BotToken_enabled><class id="Telegram_BotToken_text" style="color:black;">Bot Token</class></label>
+            </td>
+            <td>
+                <input required type="text" id="Telegram_BotToken_value1">
+            </td>
+            <td>Telegram Bot Token from @BotFather</td>
+        </tr>
+
+        <tr class="TelegramItem">
+            <td class="indent1">
+                <input type="checkbox" id="Telegram_ChatID_enabled" value="1"  onclick = 'InvertEnableItem("Telegram", "ChatID")' unchecked >
+                <label for=Telegram_ChatID_enabled><class id="Telegram_ChatID_text" style="color:black;">Chat ID</class></label>
+            </td>
+            <td>
+                <input required type="text" id="Telegram_ChatID_value1">
+            </td>
+            <td>Telegram Chat ID to send messages to</td>
+        </tr>
+
+        <tr class="TelegramItem">
+            <td class="indent1">
+                <input type="checkbox" id="Telegram_TelegramUploadImg_enabled" value="1"  onclick = 'InvertEnableItem("Telegram", "TelegramUploadImg")' unchecked >
+                <label for=Telegram_TelegramUploadImg_enabled><class id="Telegram_TelegramUploadImg_text" style="color:black;">Upload Image</class></label>
+            </td>
+            <td>
+                <select id="Telegram_TelegramUploadImg_value1">
+                    <option value="0" selected>NEVER</option>
+                    <option value="1">ALWAYS</option>
+                    <option value="2">ON_ERROR</option>
+                </select>
+            </td>
+            <td>When to upload images to Telegram</td>
+        </tr>
+
+        <tr class="TelegramItem">
+            <td class="indent1">
+                <input type="checkbox" id="Telegram_TelegramError_enabled" value="1"  onclick = 'InvertEnableItem("Telegram", "TelegramError")' unchecked >
+                <label for=Telegram_TelegramError_enabled><class id="Telegram_TelegramError_text" style="color:black;">Error Messages Only</class></label>
+            </td>
+            <td>
+                <select id="Telegram_TelegramError_value1">
+                    <option value="false" selected>false</option>
+                    <option value="true">true</option>
+                </select>
+            </td>
+            <td>Send messages only when errors occur</td>
+        </tr>
+
         <!------------- MQTT ------------------>
         <tr style="border-bottom: 2px solid lightgray;">
             <td colspan="3" style="padding-left: 0px; padding-bottom: 3px;">
@@ -2291,6 +2366,9 @@ function UpdateInput() {
     document.getElementById("Category_Analog_enabled").checked = category["Analog"]["enabled"];
     setVisible("AnalogItem", category["Analog"]["enabled"]);
 
+    document.getElementById("Category_Telegram_enabled").checked = category["Telegram"]["enabled"];
+    setVisible("TelegramItem", category["Telegram"]["enabled"]);
+
     document.getElementById("Category_MQTT_enabled").checked = category["MQTT"]["enabled"];
     setVisible("MQTTItem", category["MQTT"]["enabled"]);
 
@@ -2358,6 +2436,12 @@ function UpdateInput() {
     WriteParameter(param, category, "PostProcessing", "PreValueAgeStartup", true);		
     WriteParameter(param, category, "PostProcessing", "ErrorMessage", false);
     // WriteParameter(param, category, "PostProcessing", "CheckDigitIncreaseConsistency", false);
+
+    WriteParameter(param, category, "Telegram", "TelegramEnable", false);
+    WriteParameter(param, category, "Telegram", "BotToken", true);
+    WriteParameter(param, category, "Telegram", "ChatID", true);
+    WriteParameter(param, category, "Telegram", "TelegramUploadImg", false);
+    WriteParameter(param, category, "Telegram", "TelegramError", false);
 
     WriteParameter(param, category, "MQTT", "Uri", true);	
     WriteParameter(param, category, "MQTT", "MainTopic", true);	
@@ -2468,6 +2552,7 @@ function WriteModelFiles() {
 function ReadParameterAll() {
     category["Analog"]["enabled"] = document.getElementById("Category_Analog_enabled").checked;
     category["Digits"]["enabled"] = document.getElementById("Category_Digits_enabled").checked;
+    category["Telegram"]["enabled"] = document.getElementById("Category_Telegram_enabled").checked;
     category["MQTT"]["enabled"] = document.getElementById("Category_MQTT_enabled").checked;
     category["InfluxDB"]["enabled"] = document.getElementById("Category_InfluxDB_enabled").checked;
     category["InfluxDBv2"]["enabled"] = document.getElementById("Category_InfluxDBv2_enabled").checked;
@@ -2527,6 +2612,12 @@ function ReadParameterAll() {
     ReadParameter(param, "PostProcessing", "PreValueAgeStartup", true);
     ReadParameter(param, "PostProcessing", "ErrorMessage", false);
     // ReadParameter(param, "PostProcessing", "CheckDigitIncreaseConsistency", false);	
+
+    ReadParameter(param, "Telegram", "TelegramEnable", false);
+    ReadParameter(param, "Telegram", "BotToken", true);
+    ReadParameter(param, "Telegram", "ChatID", true);
+    ReadParameter(param, "Telegram", "TelegramUploadImg", false);
+    ReadParameter(param, "Telegram", "TelegramError", false);
 
     ReadParameter(param, "MQTT", "Uri", true);
     ReadParameter(param, "MQTT", "MainTopic", true);
@@ -2603,6 +2694,7 @@ function UpdateAfterCategoryCheck() {
     ReadParameterAll();
     category["Analog"]["enabled"] = document.getElementById("Category_Analog_enabled").checked;
     category["Digits"]["enabled"] = document.getElementById("Category_Digits_enabled").checked;
+    category["Telegram"]["enabled"] = document.getElementById("Category_Telegram_enabled").checked;
     category["MQTT"]["enabled"] = document.getElementById("Category_MQTT_enabled").checked;
     category["InfluxDB"]["enabled"] = document.getElementById("Category_InfluxDB_enabled").checked;
     category["InfluxDBv2"]["enabled"] = document.getElementById("Category_InfluxDBv2_enabled").checked;

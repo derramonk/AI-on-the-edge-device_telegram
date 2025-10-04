@@ -183,6 +183,17 @@ function ParseConfig() {
     ParamAddValue(param, catname, "ErrorMessage");
     ParamAddValue(param, catname, "CheckDigitIncreaseConsistency", 1, true, "false");
 
+    var catname = "Telegram";
+    category[catname] = new Object();
+    category[catname]["enabled"] = false;
+    category[catname]["found"] = false;
+    param[catname] = new Object();
+    ParamAddValue(param, catname, "TelegramEnable");
+    ParamAddValue(param, catname, "BotToken");
+    ParamAddValue(param, catname, "ChatID");
+    ParamAddValue(param, catname, "TelegramUploadImg");
+    ParamAddValue(param, catname, "TelegramError");
+
     var catname = "MQTT";
     category[catname] = new Object();
     category[catname]["enabled"] = false;
