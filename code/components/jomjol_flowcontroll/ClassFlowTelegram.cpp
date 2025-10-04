@@ -74,50 +74,76 @@ bool ClassFlowTelegram::ReadParameter(FILE* pfile, string& aktparamgraph)
     std::vector<string> zerlegt;
 
     aktparamgraph = trim(aktparamgraph);
+    LogFile.WriteToFile(ESP_LOG_INFO, TAG, "ReadParameter called with aktparamgraph: '" + aktparamgraph + "'");
 
     if (aktparamgraph.size() == 0)
-        if (!this->GetNextParagraph(pfile, aktparamgraph))
-            return false;
-
-    if (aktparamgraph.compare("[Telegram]") != 0)       
-        return false;
-
-    while (this->GetNextParagraph(pfile, aktparamgraph) && !this->isNewParagraph(aktparamgraph))
     {
+        LogFile.WriteToFile(ESP_LOG_INFO, TAG, "aktparamgraph is empty, calling getNextLine");
+        if (!this->getNextLine(pfile, &aktparamgraph))
+        {
+            LogFile.WriteToFile(ESP_LOG_INFO, TAG, "getNextLine returned false");
+            return false;
+        }
+        LogFile.WriteToFile(ESP_LOG_INFO, TAG, "getNextLine returned: '" + aktparamgraph + "'");
+    }
+
+    if (aktparamgraph.compare("[Telegram]") != 0)
+    {
+        LogFile.WriteToFile(ESP_LOG_INFO, TAG, "aktparamgraph is not [Telegram], it is: '" + aktparamgraph + "'");
+        return false;
+    }
+
+    LogFile.WriteToFile(ESP_LOG_INFO, TAG, "Found [Telegram] section, starting to parse parameters");
+
+    while (this->getNextLine(pfile, &aktparamgraph) && !this->isNewParagraph(aktparamgraph))
+    {
+        LogFile.WriteToFile(ESP_LOG_INFO, TAG, "Inside while loop - aktparamgraph: '" + aktparamgraph + "'");
         zerlegt = ZerlegeZeile(aktparamgraph);
-        if ((toUpper(zerlegt[0]) == "TELEGRAMENABLE") && (zerlegt.size() > 1))
+        std::string _param = GetParameterName(zerlegt[0]);
+        LogFile.WriteToFile(ESP_LOG_INFO, TAG, "Parsing line: '" + aktparamgraph + "' -> Key: '" + _param + "', Value: '" + (zerlegt.size() > 1 ? zerlegt[1] : "EMPTY") + "'");
+        
+        if ((toUpper(_param) == "TELEGRAMENABLE") && (zerlegt.size() > 1))
         {
             if (toUpper(zerlegt[1]) == "TRUE")
                 TelegramEnable = true;
+            LogFile.WriteToFile(ESP_LOG_INFO, TAG, "TelegramEnable set to: " + std::to_string(TelegramEnable));
         }
-        if ((toUpper(zerlegt[0]) == "BOTTOKEN") && (zerlegt.size() > 1))
+        if ((toUpper(_param) == "BOTTOKEN") && (zerlegt.size() > 1))
         {
             botToken = zerlegt[1];
+            LogFile.WriteToFile(ESP_LOG_INFO, TAG, "BotToken set to: " + botToken);
         }
-        if ((toUpper(zerlegt[0]) == "CHATID") && (zerlegt.size() > 1))
+        if ((toUpper(_param) == "CHATID") && (zerlegt.size() > 1))
         {
             chatId = zerlegt[1];
+            LogFile.WriteToFile(ESP_LOG_INFO, TAG, "ChatID set to: " + chatId);
         }
-        if ((toUpper(zerlegt[0]) == "TELEGRAMUPLOADIMG") && (zerlegt.size() > 1))
+        if ((toUpper(_param) == "TELEGRAMUPLOADIMG") && (zerlegt.size() > 1))
         {
             TelegramUploadImg = std::stoi(zerlegt[1]);
+            LogFile.WriteToFile(ESP_LOG_INFO, TAG, "TelegramUploadImg set to: " + std::to_string(TelegramUploadImg));
         }
-        if ((toUpper(zerlegt[0]) == "TELEGRAMERROR") && (zerlegt.size() > 1))
+        if ((toUpper(_param) == "TELEGRAMERROR") && (zerlegt.size() > 1))
         {
             if (toUpper(zerlegt[1]) == "TRUE")
                 TelegramOnError = true;
+            LogFile.WriteToFile(ESP_LOG_INFO, TAG, "TelegramOnError set to: " + std::to_string(TelegramOnError));
         }
     }
 
     // Don't initialize Telegram during boot phase to avoid conflicts with camera init
     // Will be initialized on first doFlow() call
-    LogFile.WriteToFile(ESP_LOG_INFO, TAG, "Telegram configuration loaded, will initialize on first use");
+    LogFile.WriteToFile(ESP_LOG_INFO, TAG, "Telegram configuration loaded - TelegramEnable: " + std::to_string(TelegramEnable) + 
+                       ", BotToken: " + (botToken.empty() ? "EMPTY" : "SET") + 
+                       ", ChatID: " + (chatId.empty() ? "EMPTY" : "SET"));
 
     return true;
 }
 
 bool ClassFlowTelegram::doFlow(string zwtime)
 {
+    LogFile.WriteToFile(ESP_LOG_DEBUG, TAG, "doFlow called - TelegramEnable: " + std::to_string(TelegramEnable));
+    
     if (!TelegramEnable)
         return true;
 
@@ -130,9 +156,13 @@ bool ClassFlowTelegram::doFlow(string zwtime)
     // Initialize Telegram on first use (lazy initialization)
     static bool telegramInitialized = false;
     if (!telegramInitialized) {
+        LogFile.WriteToFile(ESP_LOG_INFO, TAG, "Initializing Telegram for first use");
         TelegramInit(botToken, chatId);
         telegramInitialized = true;
     }
+
+    std::string testmsg = "📊 AI-on-the-edge Update\n";
+    TelegramSendMessage(testmsg);
 
     if (flowpostprocessing)
     {

@@ -286,6 +286,7 @@ ClassFlow* ClassFlowControll::CreateClassFlow(std::string _type)
     #ifdef ENABLE_TELEGRAM
         if (toUpper(_type).compare("[TELEGRAM]") == 0) {
             cfc = new ClassFlowTelegram(&FlowControll);
+            LogFile.WriteToFile(ESP_LOG_INFO, "FLOWCTRL", "Telegram Flow created and will be added to FlowControll list");
         }
     #endif //ENABLE_TELEGRAM
 
