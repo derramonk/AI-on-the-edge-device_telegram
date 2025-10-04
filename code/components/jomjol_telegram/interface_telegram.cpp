@@ -119,10 +119,50 @@ bool TelegramSendMessage(std::string message)
             LogFile.WriteToFile(ESP_LOG_INFO, TAG, "Message sent successfully to Telegram");
             success = true;
         } else if (status_code == 301 || status_code == 302) {
-            LogFile.WriteToFile(ESP_LOG_INFO, TAG, "Received redirect (status " + std::to_string(status_code) + ") - trying again with explicit HTTP");
-            // For now, we'll consider this a success since the message was delivered
-            // The redirect to HTTPS can be ignored for basic messaging
-            success = true;
+            LogFile.WriteToFile(ESP_LOG_INFO, TAG, "Received redirect (status " + std::to_string(status_code) + ") - retrying with HTTPS");
+            
+            // Clean up current client
+            esp_http_client_cleanup(http_client);
+            
+            // Try again with HTTPS URL
+            std::string https_url = "https://api.telegram.org/bot" + _botToken + "/sendMessage";
+            
+            esp_http_client_config_t https_config = {};
+            https_config.url = https_url.c_str();
+            https_config.user_agent = "ESP32 AI-on-the-edge Device";
+            https_config.method = HTTP_METHOD_POST;
+            https_config.event_handler = http_event_handler;
+            https_config.buffer_size = 512;
+            https_config.user_data = response_buffer;
+            https_config.timeout_ms = 15000;  // Longer timeout for HTTPS
+            https_config.transport_type = HTTP_TRANSPORT_OVER_SSL;
+            https_config.skip_cert_common_name_check = true;
+            https_config.disable_auto_redirect = true;
+            // Disable certificate verification for testing
+            https_config.use_global_ca_store = false;
+            https_config.cert_pem = NULL;
+            
+            http_client = esp_http_client_init(&https_config);
+            if (http_client) {
+                esp_http_client_set_header(http_client, "Content-Type", "application/json");
+                esp_http_client_set_post_field(http_client, jsonString, strlen(jsonString));
+                
+                esp_err_t retry_err = esp_http_client_perform(http_client);
+                if (retry_err == ESP_OK) {
+                    int retry_status = esp_http_client_get_status_code(http_client);
+                    LogFile.WriteToFile(ESP_LOG_DEBUG, TAG, "HTTPS retry status code: " + std::to_string(retry_status));
+                    if (retry_status == 200) {
+                        LogFile.WriteToFile(ESP_LOG_INFO, TAG, "Message sent successfully to Telegram via HTTPS");
+                        success = true;
+                    } else {
+                        LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "HTTPS retry failed with status: " + std::to_string(retry_status));
+                    }
+                } else {
+                    LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "HTTPS retry request failed: " + std::string(esp_err_to_name(retry_err)));
+                }
+            } else {
+                LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "Failed to initialize HTTPS client for retry");
+            }
         } else {
             LogFile.WriteToFile(ESP_LOG_ERROR, TAG, "Telegram API returned status: " + std::to_string(status_code));
         }
