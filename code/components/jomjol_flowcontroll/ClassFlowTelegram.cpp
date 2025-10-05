@@ -207,8 +207,8 @@ bool ClassFlowTelegram::doFlow(string zwtime)
             int maxNumbers = (numbers->size() > 3) ? 3 : numbers->size();
             for (int i = 0; i < maxNumbers; ++i)
             {
-                message += "� " + (*numbers)[i]->name + "\n";
-                message += "� " + (*numbers)[i]->ReturnValue + "\n";
+                message += "📊 " + (*numbers)[i]->name + "\n";
+                message += "📈 " + (*numbers)[i]->ReturnValue + "\n";
                 
                 if ((*numbers)[i]->ErrorMessage)
                 {
