@@ -11,8 +11,14 @@
 #include "../../include/defines.h"
 #include "ClassLogFile.h"
 #include <time.h>
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
 
 static const char* TAG = "TELEGRAM_FLOW";
+
+// Static members for task handling
+TaskHandle_t ClassFlowTelegram::telegramTaskHandle = nullptr;
+ClassFlowTelegram* ClassFlowTelegram::instance = nullptr;
 
 void ClassFlowTelegram::SetInitialParameter(void)
 {
@@ -26,16 +32,19 @@ void ClassFlowTelegram::SetInitialParameter(void)
     TelegramEnable = false;
     TelegramUploadImg = 0;
     TelegramOnError = false;
+    TelegramBotCommands = false;
 }
 
 ClassFlowTelegram::ClassFlowTelegram()
 {
     SetInitialParameter();
+    instance = this; // Set static instance
 }
 
 ClassFlowTelegram::ClassFlowTelegram(std::vector<ClassFlow*>* lfc)
 {
     SetInitialParameter();
+    instance = this; // Set static instance
     ListFlowControll = lfc;
     for (int i = 0; i < ListFlowControll->size(); ++i)
     {
@@ -53,6 +62,7 @@ ClassFlowTelegram::ClassFlowTelegram(std::vector<ClassFlow*>* lfc)
 ClassFlowTelegram::ClassFlowTelegram(std::vector<ClassFlow*>* lfc, ClassFlow *_prev)
 {
     SetInitialParameter();
+    instance = this; // Set static instance
     previousElement = _prev;
     ListFlowControll = lfc;
 
@@ -66,6 +76,15 @@ ClassFlowTelegram::ClassFlowTelegram(std::vector<ClassFlow*>* lfc, ClassFlow *_p
         {
             flowAlignment = (ClassFlowAlignment*) (*ListFlowControll)[i];
         }
+    }
+}
+
+ClassFlowTelegram::~ClassFlowTelegram()
+{
+    // Clean up the task when the object is destroyed
+    stopTelegramTask();
+    if (instance == this) {
+        instance = nullptr;
     }
 }
 
@@ -129,13 +148,24 @@ bool ClassFlowTelegram::ReadParameter(FILE* pfile, string& aktparamgraph)
                 TelegramOnError = true;
             LogFile.WriteToFile(ESP_LOG_INFO, TAG, "TelegramOnError set to: " + std::to_string(TelegramOnError));
         }
+        if ((toUpper(_param) == "TELEGRAMBOTCOMMANDS") && (zerlegt.size() > 1))
+        {
+            if (toUpper(zerlegt[1]) == "TRUE")
+                TelegramBotCommands = true;
+            LogFile.WriteToFile(ESP_LOG_INFO, TAG, "TelegramBotCommands set to: " + std::to_string(TelegramBotCommands));
+        }
     }
 
     // Don't initialize Telegram during boot phase to avoid conflicts with camera init
     // Will be initialized on first doFlow() call
     LogFile.WriteToFile(ESP_LOG_INFO, TAG, "Telegram configuration loaded - TelegramEnable: " + std::to_string(TelegramEnable) + 
+                       ", BotCommands: " + std::to_string(TelegramBotCommands) +
                        ", BotToken: " + (botToken.empty() ? "EMPTY" : "SET") + 
                        ", ChatID: " + (chatId.empty() ? "EMPTY" : "SET"));
+
+    // Task start disabled to prevent camera instability
+    // LogFile.WriteToFile(ESP_LOG_INFO, TAG, "Starting Telegram task early");
+    // startTelegramTask();
 
     return true;
 }
@@ -158,6 +188,12 @@ bool ClassFlowTelegram::doFlow(string zwtime)
     if (!telegramInitialized) {
         LogFile.WriteToFile(ESP_LOG_INFO, TAG, "Initializing Telegram for first use");
         TelegramInit(botToken, chatId);
+        
+        // Task start disabled to prevent camera instability
+        // LogFile.WriteToFile(ESP_LOG_INFO, TAG, "startTelegramTask");
+        // Start the Telegram bot command listener
+        // startTelegramTask();
+        
         telegramInitialized = true;
     }
 
@@ -182,8 +218,6 @@ bool ClassFlowTelegram::doFlow(string zwtime)
 
     if (flowpostprocessing)
     {
-        LogFile.WriteToFile(ESP_LOG_INFO, TAG, "Sending Telegram message");
-
         std::vector<NumberPost*>* numbers = flowpostprocessing->GetNumbers();
         bool hasError = false;
         
@@ -207,8 +241,8 @@ bool ClassFlowTelegram::doFlow(string zwtime)
             int maxNumbers = (numbers->size() > 3) ? 3 : numbers->size();
             for (int i = 0; i < maxNumbers; ++i)
             {
-                message += "� " + (*numbers)[i]->name + "\n";
-                message += "� " + (*numbers)[i]->ReturnValue + "\n";
+                message += "📊 " + (*numbers)[i]->name + "\n";
+                message += "📈 " + (*numbers)[i]->ReturnValue + "\n";
                 
                 if ((*numbers)[i]->ErrorMessage)
                 {
@@ -230,6 +264,60 @@ bool ClassFlowTelegram::doFlow(string zwtime)
     }
        
     return true;
+}
+
+void ClassFlowTelegram::startTelegramTask()
+{
+    // Start the telegram task early if Telegram is enabled
+    if (TelegramBotCommands && TelegramEnable)
+    {
+        if (telegramTaskHandle == nullptr)
+        {
+            ESP_LOGI(TAG, "Starting Telegram task");
+            BaseType_t result = xTaskCreate(
+                telegramTask,            // Task function
+                "telegram_task",         // Task name
+                1536,                    // Stack size (reduced from 4096)
+                nullptr,                 // Parameter
+                2,                       // Priority (reduced from 3)
+                &telegramTaskHandle      // Task handle
+            );
+            
+            if (result != pdPASS)
+            {
+                ESP_LOGE(TAG, "Failed to create Telegram task");
+                telegramTaskHandle = nullptr;
+            }
+            else
+            {
+                ESP_LOGI(TAG, "Telegram task started successfully");
+            }
+        }
+    }
+}
+
+void ClassFlowTelegram::stopTelegramTask()
+{
+    if (telegramTaskHandle != nullptr)
+    {
+        ESP_LOGI(TAG, "Stopping Telegram task");
+        vTaskDelete(telegramTaskHandle);
+        telegramTaskHandle = nullptr;
+    }
+}
+
+void ClassFlowTelegram::telegramTask(void* parameter)
+{
+    ESP_LOGI(TAG, "Telegram task started - will log every 5 seconds");
+    int counter = 0;
+    while (telegramTaskHandle != nullptr)
+    {
+        // Log message every 10 seconds with counter (reduced frequency)
+        counter++;
+        ESP_LOGI(TAG, "Telegram Task #%d", counter);
+        // Wait 10 seconds before next log (increased from 5 seconds)
+        vTaskDelay(pdMS_TO_TICKS(10000));
+    }
 }
 
 #endif //ENABLE_TELEGRAM
